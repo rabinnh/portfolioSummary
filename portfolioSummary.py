@@ -20,6 +20,7 @@ import sys
 
 import pandas as pd
 from matplotlib import pyplot as plt
+from dateutil.parser import parse
 
 
 # My apply lamda
@@ -32,8 +33,38 @@ def currencyToFloat(currency):
     return float(currency.replace('$', ''))
 
 
+# See if the string contains a date
+def checkForDate(desc):
+    dList = desc.split(' ')
+    hasDate = False
+    for d in dList:
+        try:
+            parse(d)
+            hasDate = True
+            break
+        except ValueError:
+            pass
+
+    return hasDate
+
+
 # Main
-def main(fName, oName):
+def main(fName, oDir):
+    # Extract base file name
+    if fName[-4:] != '.csv':
+        print('Input file must have a csv extension')
+        exit(-1)
+    fBaseName = fName[:len(fName)-4]
+    i = fBaseName.rfind('/')
+    if i != -1:
+        fBaseName = fBaseName[i + 1:]
+
+    # Create full path for output
+    oName = oDir
+    if oName[len(oName) - 1] != '/':
+        oName += '/'
+    oName += fBaseName
+
     # Read the csv file
     df = pd.read_csv(fName)
 
@@ -89,9 +120,9 @@ def main(fName, oName):
             df.at[index, 'Symbol'] = '*CASH*'
             df.at[index, 'Description'] = 'Money Market'
 
-    # Change all bond and CD rows to cash (they always have a '%' sign in them)
+    # Change all bond and CD rows to cash. They always have a '%' sign in them and a date.
     for index in df.index:
-        if '%' in df.loc[index]['Description']:
+        if '%' in df.loc[index]['Description'] and checkForDate(df.loc[index]['Description']):
             df.at[index, 'Symbol'] = 'Fixed Income'
             df.at[index, 'Description'] = 'Bonds and CDs'
 
@@ -139,4 +170,5 @@ def main(fName, oName):
 
 
 if __name__ == '__main__':
+    "USAGE: portfolioSummary.py input_file output_directory"
     main(sys.argv[1], sys.argv[2])
