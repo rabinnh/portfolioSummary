@@ -73,13 +73,10 @@ def main(fName, oName):
     # If any symbols are blank (like RHRP) then change it to *CASH**
     df['Symbol'] = df['Symbol'].fillna('*CASH**')
 
-    # Can't use map because all rows must have unique keys
-    # df['Current Value'] = pd.Series(map(currencyToFloat, df['Current Value']))
-
-    # So use list comprehension instead
+    # Use a lambda to quickly convert string dollar figures to a float
     df['Current Value'] = df.apply(lambda row: currencyToFloat(row['Current Value']), axis=1)
 
-    # Add pending cash row back in
+    # Add "pending' cash row back in
     # Because the indexes may not be sequential, we can't use df.loc[len(df.index)] until we reset the index
     df = df.reset_index(drop=True)
     df.loc[len(df.index)] = ['Pending**', 'Pending cash', pending]
@@ -92,7 +89,7 @@ def main(fName, oName):
             df.at[index, 'Symbol'] = '*CASH*'
             df.at[index, 'Description'] = 'Money Market'
 
-    # Change all bond and CD rows to cash
+    # Change all bond and CD rows to cash (they always have a '%' sign in them)
     for index in df.index:
         if '%' in df.loc[index]['Description']:
             df.at[index, 'Symbol'] = 'Fixed Income'
@@ -123,7 +120,7 @@ def main(fName, oName):
     # Create pie chart
     # Creating plot
     # fig = plt.figure(figsize=(12, 10), tight_layout=True)
-    plt.figure(figsize=(15,15))
+    plt.figure(figsize=(15, 15))
     plt.rcParams.update({'font.size': 18})
     plt.pie(perc, labels=labels, autopct='{:.2f}%'.format)
     # plt.show()
