@@ -166,7 +166,7 @@ def main(fName, oDir):
     f.close()
 
     # Write as an Excel file
-    df.to_excel('{}.xlsx'.format(oName))
+    df.to_excel('{}.xlsx'.format(oName), index=False)
 
 
 if __name__ == '__main__':
