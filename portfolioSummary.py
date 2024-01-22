@@ -112,8 +112,6 @@ def main(fName, oDir):
     df = df.reset_index(drop=True)
     df.loc[len(df.index)] = ['Pending**', 'Pending cash', pending]
 
-    total = float(df.sum().loc['Current Value'])
-
     # Change all cash rows to "CASH"
     for index in df.index:
         if '**' in df.loc[index]['Symbol']:
