@@ -6,7 +6,7 @@ This program organizes and summarizes your positions across all of these account
 summarize all cash and money market entries (including "Pending Activity") into "\*CASH\*" and all bonds and CDs 
 into "Fixed Income".  It will then aggregate the stocks positions from all accounts so you can see your total
 position in each stock.
-    
+ 
 ## Program
 
 ### Dependencies
@@ -16,7 +16,14 @@ There is a requirements.txt file that you can use to install the required module
 
 ### Usage
 
-python3 portfolioSummary.py downloaded_fidelity_portfolio.cxv output_directory  
+Log into your Fidelity account and select "All accounts" on the left, and then
+click on "Positions".  On the right you'll see a download icon to download a CSV
+file.
+
+
+Then run: 
+
+    python3 portfolioSummary.py downloaded_fidelity_portfolio.cxv output_directory  
 
 ### Output
 
