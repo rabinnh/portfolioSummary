@@ -1,2 +1,28 @@
-# portfolioSummary
-Summarize the CSV portfolio details that re downloaded from the Fidelity Positions page
+# Fidelity Portfolio Summary
+
+The Fidelity Portfolio page allows you to download positions for all your accounts.
+
+This program organizes and summarizes your positions across all of these accounts.  For example, it will 
+summarize all cash and money markey (including "Pending Activity") into "*CASH*" and all bonds and CDs 
+into "Fixed Income".  It will then aggregate stocks positions from all accounts so you can see your total
+position in each stock.
+    
+## Program
+
+### Dependencies
+
+As you can see, the script is named 'portfolioSummary.py'. It has been tested on Python 3.10 but should work on Python 3.8+
+There is a requirements.txt file that you can use to install pandas and matplotlib.
+
+### Usage
+
+python3 portfolioSummary.py downloaded_fidelity_portfolio.cxv output_directory  
+
+### Output
+
+Three files are created: a spreadsheet (xlsx), a piechart (png), and a JSON file that has the same values
+as the spreadasheet.
+
+Note that at this time the spreadsheet columns are not formatted.  In the future I may use the pandas "ExcelWriter"
+capability to pretty it up.  
+
