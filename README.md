@@ -14,6 +14,10 @@ position in each stock.
 As you can see, the script is named 'portfolioSummary.py'. It has been tested on Python 3.10 but should work on Python 3.8+
 There is a requirements.txt file that you can use to install the required modules, pandas and matplotlib.
 
+    pip3 install -r requirements.txt
+
+(You can just use 'pip' if it won't default to an old Python 2.X version)
+
 ### Usage
 
 Log into your Fidelity account and select "All accounts" on the left, and then
