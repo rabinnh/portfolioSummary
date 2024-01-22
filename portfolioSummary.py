@@ -170,5 +170,6 @@ def main(fName, oDir):
 
 
 if __name__ == '__main__':
-    "USAGE: portfolioSummary.py input_file output_directory"
+    if len(sys.argv) != 3:
+        print("USAGE: portfolioSummary.py input_file output_directory")
     main(sys.argv[1], sys.argv[2])
