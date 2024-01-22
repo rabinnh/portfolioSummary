@@ -23,7 +23,7 @@ file.
 
 Then run: 
 
-    python3 portfolioSummary.py downloaded_fidelity_portfolio.cxv output_directory  
+    python3 portfolioSummary.py downloaded_fidelity_portfolio.csv output_directory  
 
 ### Output
 
