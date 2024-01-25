@@ -30,7 +30,7 @@ def percOfTotal(value, total):
 
 # My apply lamda
 def currencyToFloat(currency):
-    return float(currency.replace('$', ''))
+    return float(currency.replace('$', '').replace(',', ''))
 
 
 # See if the string contains a date
@@ -73,20 +73,21 @@ def main(fName, oDir):
     pending = 0.0
     pDF.set_index('Symbol', inplace=True)
 
-    for i in pDF['Last Price Change']:
+    for iX, row in pDF.iterrows():
+        i = row['Last Price Change']
         amt = 0.0
         if type(i) is str:
-            amt = float(i.replace('$', ''))
+            amt = currencyToFloat(i)
         elif type(i) is float:
             amt = i
         if math.isnan(amt):
             amt = 0.0
         amt = float(amt)
         if amt == 0.0:
-            if type(i['Current Value']) is str:
-                amt = i['Current Value'].replace('$', '')
-            elif type(i['Current Value']) is float:
-                amt = i['Current Value']
+            if type(row['Current Value']) is str:
+                amt = currencyToFloat(row['Current Value'])
+            elif type(row['Current Value']) is float:
+                amt = row['Current Value']
         pending += float(amt)
 
     # BROKERAGELINK account has the total, and then still lists the individual investments, so remove it.
