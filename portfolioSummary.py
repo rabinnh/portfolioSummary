@@ -118,7 +118,7 @@ def main(fName, oDir):
             df.at[index, 'Symbol'] = '*CASH*'
             df.at[index, 'Description'] = 'Money Market'
 
-    # Change all bond and CD rows to cash. They always have a '%' sign in them and a date.
+    # Change all bond and CD rows to Fixed Income. They always have a '%' sign in them and a date.
     for index in df.index:
         if '%' in df.loc[index]['Description'] and checkForDate(df.loc[index]['Description']):
             df.at[index, 'Symbol'] = 'Fixed Income'
