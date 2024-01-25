@@ -34,6 +34,4 @@ Then run:
 Three files are created: a spreadsheet (xlsx), a piechart (png), and a JSON file that has the same values
 as the spreadasheet.
 
-Note that at this time the spreadsheet columns are not formatted.  In the future I may use the pandas "ExcelWriter"
-capability to pretty the spreadsheet up.  
 
