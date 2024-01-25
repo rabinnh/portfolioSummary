@@ -17,10 +17,10 @@ IN THE SOFTWARE.
 
 import math
 import sys
-
 import pandas as pd
 from matplotlib import pyplot as plt
 from dateutil.parser import parse
+from UliPlot.XLSX import auto_adjust_xlsx_column_width
 
 
 # My apply lamda
@@ -164,7 +164,13 @@ def main(fName, oDir):
     f.close()
 
     # Write as an Excel file
-    df.to_excel('{}.xlsx'.format(oName), index=False)
+    # df.to_excel('{}.xlsx'.format(oName), index=False)
+    df['Current Value'] = df['Current Value'].map('${:,.2f}'.format)
+    df['Perc of total'] = df['Perc of total'] * 100
+    df['Perc of total'] = df['Perc of total'].map('{:,.2f}%'.format)
+    with pd.ExcelWriter('{}.xlsx'.format(oName)) as writer:
+        df.to_excel(writer, sheet_name="Investment Summary")
+        auto_adjust_xlsx_column_width(df, writer, sheet_name="Investment Summary", margin=1)
 
 
 if __name__ == '__main__':
