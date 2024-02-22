@@ -157,7 +157,7 @@ def main(fName, oDir):
     plt.savefig('{}.{}'.format(oName, 'png'), dpi='figure')
 
     # Convert to a JSON buffer
-    jsonBuff = df.to_json(orient='records', indent=4, index=True)
+    jsonBuff = df.to_json(orient='records', indent=4)
 
     # And write it
     f = open('{}.json'.format(oName), 'w')
