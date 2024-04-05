@@ -29,8 +29,14 @@ def percOfTotal(value, total):
 
 
 # My apply lamda
-def currencyToFloat(currency):
-    return float(currency.replace('$', '').replace(',', ''))
+def currencyToFloat(currency, default=None):
+    if default is not None and type(currency) is str and len(currency) == 0:
+        if type(default) is str:
+            return float(default.replace('$', '').replace(',', ''))
+        else:
+            return default
+    else:
+        return float(currency.replace('$', '').replace(',', ''))
 
 
 # See if the string contains a date
@@ -73,8 +79,8 @@ def main(fName, oDir):
     pending = 0.0
     pDF.set_index('Symbol', inplace=True)
 
-    for iX, row in pDF.iterrows():
-        i = row['Last Price Change']
+    for iX, iRow in pDF.iterrows():
+        i = iRow['Last Price Change']
         amt = 0.0
         if type(i) is str:
             amt = currencyToFloat(i)
@@ -84,17 +90,18 @@ def main(fName, oDir):
             amt = 0.0
         amt = float(amt)
         if amt == 0.0:
-            if type(row['Current Value']) is str:
-                amt = currencyToFloat(row['Current Value'])
-            elif type(row['Current Value']) is float:
-                amt = row['Current Value']
+            if type(iRow['Current Value']) is str:
+                amt = currencyToFloat(iRow['Current Value'])
+            elif type(iRow['Current Value']) is float:
+                amt = iRow['Current Value']
         pending += float(amt)
 
     # BROKERAGELINK account has the total, and then still lists the individual investments, so remove it.
     df = df[df['Description'] != 'BROKERAGELINK']
 
     # We only need symbol and current value
-    df = df.filter(['Symbol', 'Description', 'Current Value'])
+    # df = df.filter(['Symbol', 'Description', 'Quantity', 'Current Value', 'Cost Basis Total'])
+    df = df.filter(['Symbol', 'Description', 'Quantity', 'Current Value', 'Cost Basis Total'])
 
     # Remove the pending activity rows
     df = df[df['Symbol'] != 'Pending Activity']
@@ -105,31 +112,51 @@ def main(fName, oDir):
     # If any symbols are blank (like RHRP) then change it to *CASH**
     df['Symbol'] = df['Symbol'].fillna('*CASH**')
 
+    # Get rid of nans
+    df['Quantity'] = df['Quantity'].fillna(1.0)
+    df['Cost Basis Total'] = df['Cost Basis Total'].fillna(df['Current Value'])
+
     # Use a lambda to quickly convert string dollar figures to a float
     df['Current Value'] = df.apply(lambda row: currencyToFloat(row['Current Value']), axis=1)
+    df['Cost Basis Total'] = df.apply(lambda row: currencyToFloat(row['Cost Basis Total'], row['Current Value']), axis=1)
 
     # Add "pending' cash row back in
     # Because the indexes may not be sequential, we can't use df.loc[len(df.index)] until we reset the index
     df = df.reset_index(drop=True)
-    df.loc[len(df.index)] = ['Pending**', 'Pending cash', pending]
+    df.loc[len(df.index)] = ['Pending**', 'Pending cash', 1.0, pending, pending]
 
     # Change all cash rows to "CASH"
     for index in df.index:
         if '**' in df.loc[index]['Symbol']:
             df.at[index, 'Symbol'] = '*CASH*'
-            df.at[index, 'Description'] = 'Money Market'
+            df.at[index, 'Description'] = 'Fixed Income'
 
     # Change all bond and CD rows to Fixed Income. They always have a '%' sign in them and a date.
     for index in df.index:
         if '%' in df.loc[index]['Description'] and checkForDate(df.loc[index]['Description']):
-            df.at[index, 'Symbol'] = 'Fixed Income'
-            df.at[index, 'Description'] = 'Bonds and CDs'
+            if ' CD ' in df.loc[index]['Description']:
+                df.at[index, 'Symbol'] = 'CDs'
+            else:
+                df.at[index, 'Symbol'] = 'Bonds'
+            df.at[index, 'Description'] = 'Fixed Income'
 
     # Now sum all common symbols - "reset_index" ensures that we retain all our index columns
     df = df.groupby(['Symbol', 'Description']).sum().reset_index()
 
     # Get the portfolio total
     total = float(df.sum().loc['Current Value'])
+
+    # *CASH*, CDs, and Fixed Income are special cases
+    df.loc[df['Description'] == 'Fixed Income', 'Quantity'] = 1.0
+
+    # Figure out average cost bases
+    df['Average Cost Basis'] = df['Cost Basis Total'] / df['Quantity']
+
+    # Figure out Gain-Loss
+    df['Gain-Loss'] = df['Current Value'] - df['Cost Basis Total']
+
+    # Figure out Gain-Loss %
+    df['Gain-Loss %'] = df['Gain-Loss'] / df['Cost Basis Total']
 
     # Now get the percent of the total
     df['Perc of total'] = df.apply(lambda row: percOfTotal(row['Current Value'], total), axis=1)
@@ -165,13 +192,15 @@ def main(fName, oDir):
     f.close()
 
     # Write as an Excel file
-    # df.to_excel('{}.xlsx'.format(oName), index=False)
-    df['Current Value'] = df['Current Value'].map('${:,.2f}'.format)
-    df['Perc of total'] = df['Perc of total'] * 100
-    df['Perc of total'] = df['Perc of total'].map('{:,.2f}%'.format)
-    with pd.ExcelWriter('{}.xlsx'.format(oName)) as writer:
+    with pd.ExcelWriter('{}.xlsx'.format(oName), engine="xlsxwriter") as writer:
         df.to_excel(writer, sheet_name="Investment Summary")
         auto_adjust_xlsx_column_width(df, writer, sheet_name="Investment Summary", margin=1)
+        workbook = writer.book
+        worksheet = writer.sheets['Investment Summary']
+        format1 = workbook.add_format({"num_format": "$#,##0.00"})
+        format2 = workbook.add_format({"num_format": "0.00%"})
+        worksheet.set_column(4, 7, 18, format1)
+        worksheet.set_column(8, 9, 14, format2)
 
 
 if __name__ == '__main__':
