@@ -32,6 +32,6 @@ Then run:
 ### Output
 
 Three files are created: a spreadsheet (xlsx), a piechart (png), and a JSON file that has the same values
-as the spreadasheet.
+as the spreadsheet.
 
 
