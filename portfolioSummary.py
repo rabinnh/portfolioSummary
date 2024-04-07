@@ -192,13 +192,14 @@ def main(fName, oDir):
 
     # Write as an Excel file
     with pd.ExcelWriter('{}.xlsx'.format(oName), engine="xlsxwriter") as writer:
-        df.to_excel(writer, sheet_name="Investment Summary")
+        df.to_excel(writer, sheet_name="Investment Summary", index=False)
         workbook = writer.book
         worksheet = writer.sheets['Investment Summary']
         format1 = workbook.add_format({"num_format": "$#,##0.00"})
         format2 = workbook.add_format({"num_format": "0.00%"})
-        worksheet.set_column(4, 7, 18, format1)
-        worksheet.set_column(8, 9, 14, format2)
+        worksheet.set_column(1, 1, 30, format1)
+        worksheet.set_column(3, 6, 18, format1)
+        worksheet.set_column(7, 8, 14, format2)
 
 
 if __name__ == '__main__':
