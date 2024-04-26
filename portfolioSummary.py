@@ -17,6 +17,8 @@ IN THE SOFTWARE.
 
 import math
 import sys
+
+import numpy
 import pandas as pd
 from matplotlib import pyplot as plt
 from dateutil.parser import parse
@@ -34,6 +36,8 @@ def currencyToFloat(currency, default=None):
             return float(default.replace('$', '').replace(',', ''))
         else:
             return default
+    elif currency is numpy.nan:
+        return default
     else:
         return float(currency.replace('$', '').replace(',', ''))
 
@@ -117,6 +121,7 @@ def main(fName, oDir):
 
     # Use a lambda to quickly convert string dollar figures to a float
     df['Current Value'] = df.apply(lambda row: currencyToFloat(row['Current Value']), axis=1)
+    # df['Last Price'] = df.apply(lambda row: currencyToFloat(row['Last Price'], 1.0), axis=1)
     df['Cost Basis Total'] = df.apply(lambda row: currencyToFloat(row['Cost Basis Total'], row['Current Value']), axis=1)
 
     # Add "pending' cash row back in
@@ -147,9 +152,12 @@ def main(fName, oDir):
 
     # *CASH*, CDs, and Fixed Income are special cases
     df.loc[df['Description'] == 'Fixed Income', 'Quantity'] = 1.0
+    # df.loc[df['Description'] == 'Fixed Income', 'Last Price'] = df['Current Value']
+
+    df.insert(3, 'Last Price', df['Current Value'] / df['Quantity'])
 
     # Figure out average cost bases
-    df['Average Cost Basis'] = df['Cost Basis Total'] / df['Quantity']
+    df.insert(5, 'Average Cost Basis', df['Cost Basis Total'] / df['Quantity'])
 
     # Figure out Gain-Loss
     df['Gain-Loss'] = df['Current Value'] - df['Cost Basis Total']
@@ -190,6 +198,11 @@ def main(fName, oDir):
     f.write(jsonBuff)
     f.close()
 
+    df.loc[len(df.index)] = ['', 'Total', '', '', df['Current Value'].sum(), '',
+                             df['Cost Basis Total'].sum(), df['Gain-Loss'].sum(), '', '']
+
+    df['Gain-Loss %'] = df['Gain-Loss'] / df['Cost Basis Total']
+
     # Write as an Excel file
     with pd.ExcelWriter('{}.xlsx'.format(oName), engine="xlsxwriter") as writer:
         df.to_excel(writer, sheet_name="Investment Summary", index=False)
@@ -198,8 +211,8 @@ def main(fName, oDir):
         format1 = workbook.add_format({"num_format": "$#,##0.00"})
         format2 = workbook.add_format({"num_format": "0.00%"})
         worksheet.set_column(1, 1, 30, format1)
-        worksheet.set_column(3, 6, 18, format1)
-        worksheet.set_column(7, 8, 14, format2)
+        worksheet.set_column(3, 7, 18, format1)
+        worksheet.set_column(8, 9, 14, format2)
 
 
 if __name__ == '__main__':
