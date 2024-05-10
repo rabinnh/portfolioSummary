@@ -198,10 +198,18 @@ def main(fName, oDir):
     f.write(jsonBuff)
     f.close()
 
-    df.loc[len(df.index)] = ['', 'Total', '', '', df['Current Value'].sum(), '',
+    stock_current = df.loc[((df['Symbol'] != 'CDs') & (df['Symbol'] != '*CASH*')), 'Current Value'].sum()
+    stock_cost_basis = df.loc[((df['Symbol'] != 'CDs') & (df['Symbol'] != '*CASH*')), 'Cost Basis Total'].sum()
+    stock_gain_loss = stock_current - stock_cost_basis
+    stock_gl_perc = stock_gain_loss / stock_cost_basis if stock_cost_basis > 0.0 else 0.0
+
+    df.loc[len(df.index)] = ['', 'Total (not incl interest and dividends)', '', '', df['Current Value'].sum(), '',
                              df['Cost Basis Total'].sum(), df['Gain-Loss'].sum(), '', '']
 
     df['Gain-Loss %'] = df['Gain-Loss'] / df['Cost Basis Total']
+
+    df.loc[len(df.index)] = ['', 'Total stocks', '', '', stock_current, '',
+                             stock_cost_basis, stock_gain_loss, stock_gl_perc, '']
 
     # Write as an Excel file
     with pd.ExcelWriter('{}.xlsx'.format(oName), engine="xlsxwriter") as writer:
@@ -210,7 +218,7 @@ def main(fName, oDir):
         worksheet = writer.sheets['Investment Summary']
         format1 = workbook.add_format({"num_format": "$#,##0.00"})
         format2 = workbook.add_format({"num_format": "0.00%"})
-        worksheet.set_column(1, 1, 30, format1)
+        worksheet.set_column(1, 1, 34, format1)
         worksheet.set_column(3, 7, 18, format1)
         worksheet.set_column(8, 9, 14, format2)
 
