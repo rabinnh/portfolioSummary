@@ -39,6 +39,11 @@ def currencyToFloat(currency, default=None):
     elif currency is numpy.nan:
         return default
     else:
+        if '--' in currency:
+            print('One of your equities has not yet been completely settled and the \n'
+                  '"Total Gain/Loss Dollar" and/or "Cost Basis Total" is not yet available.\n'
+                  'When this information becomes available the result will be more accurate.')
+            return default
         return float(currency.replace('$', '').replace(',', ''))
 
 
