@@ -203,8 +203,8 @@ def main(fName, oDir):
     f.write(jsonBuff)
     f.close()
 
-    stock_current = df.loc[((df['Symbol'] != 'CDs') & (df['Symbol'] != '*CASH*')), 'Current Value'].sum()
-    stock_cost_basis = df.loc[((df['Symbol'] != 'CDs') & (df['Symbol'] != '*CASH*')), 'Cost Basis Total'].sum()
+    stock_current = df.loc[(df['Description'] != 'Fixed Income'), 'Current Value'].sum()
+    stock_cost_basis = df.loc[(df['Description'] != 'Fixed Income'), 'Cost Basis Total'].sum()
     stock_gain_loss = stock_current - stock_cost_basis
     stock_gl_perc = stock_gain_loss / stock_cost_basis if stock_cost_basis > 0.0 else 0.0
 
