@@ -213,8 +213,10 @@ def main(fName, oDir):
 
     df['Gain-Loss %'] = df['Gain-Loss'] / df['Cost Basis Total']
 
+    # Stock percentage of total
+    stockPercOfTtotal = stock_current / total
     df.loc[len(df.index)] = ['', 'Total stocks', '', '', stock_current, '',
-                             stock_cost_basis, stock_gain_loss, stock_gl_perc, '']
+                             stock_cost_basis, stock_gain_loss, stock_gl_perc, stockPercOfTtotal]
 
     # Write as an Excel file
     with pd.ExcelWriter('{}.xlsx'.format(oName), engine="xlsxwriter") as writer:
