@@ -208,10 +208,8 @@ def main(fName, oDir):
     stock_gain_loss = stock_current - stock_cost_basis
     stock_gl_perc = stock_gain_loss / stock_cost_basis if stock_cost_basis > 0.0 else 0.0
 
-    fixedPercOfTotal = (total - stock_current) / total
-
     df.loc[len(df.index)] = ['', 'Total (not incl interest and dividends)', '', '', df['Current Value'].sum(), '',
-                             df['Cost Basis Total'].sum(), df['Gain-Loss'].sum(), '', fixedPercOfTotal]
+                             df['Cost Basis Total'].sum(), df['Gain-Loss'].sum(), '', '']
 
     df['Gain-Loss %'] = df['Gain-Loss'] / df['Cost Basis Total']
 
