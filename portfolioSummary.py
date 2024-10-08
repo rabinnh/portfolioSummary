@@ -208,7 +208,7 @@ def main(fName, oDir):
     stock_gain_loss = stock_current - stock_cost_basis
     stock_gl_perc = stock_gain_loss / stock_cost_basis if stock_cost_basis > 0.0 else 0.0
 
-    df.loc[len(df.index)] = ['', 'Total (not incl interest and dividends)', '', '', df['Current Value'].sum(), '',
+    df.loc[len(df.index)] = ['', 'Total (not incl int. and div.)', '', '', df['Current Value'].sum(), '',
                              df['Cost Basis Total'].sum(), df['Gain-Loss'].sum(), '', '']
 
     df['Gain-Loss %'] = df['Gain-Loss'] / df['Cost Basis Total']
@@ -217,6 +217,15 @@ def main(fName, oDir):
     stockPercOfTtotal = stock_current / total
     df.loc[len(df.index)] = ['', 'Total stocks', '', '', stock_current, '',
                              stock_cost_basis, stock_gain_loss, stock_gl_perc, stockPercOfTtotal]
+
+    # Fixed income totals
+    fixedPercOfTtotal = 1.00 - stockPercOfTtotal
+    fixed_cost_basis = df.loc[(df['Description'] == 'Fixed Income'), 'Cost Basis Total'].sum()
+    fixed_current = df.loc[(df['Description'] == 'Fixed Income'), 'Current Value'].sum()
+    fixed_gain_loss = fixed_current - fixed_cost_basis
+    fixed_gl_perc = fixed_gain_loss / fixed_cost_basis if fixed_cost_basis > 0.0 else 0.0
+    df.loc[len(df.index)] = ['', 'Total fixed income (not incl int. and div.)', '', '', total - stock_current, '',
+                             fixed_cost_basis, fixed_gain_loss, fixed_gl_perc, 1.0 - stockPercOfTtotal]
 
     # Write as an Excel file
     with pd.ExcelWriter('{}.xlsx'.format(oName), engine="xlsxwriter") as writer:
