@@ -129,7 +129,7 @@ def main(fName, oDir):
     # df['Last Price'] = df.apply(lambda row: currencyToFloat(row['Last Price'], 1.0), axis=1)
     df['Cost Basis Total'] = df.apply(lambda row: currencyToFloat(row['Cost Basis Total'], row['Current Value']), axis=1)
 
-    # Add "pending' cash row back in
+    # Add "pending" cash row back in
     # Because the indexes may not be sequential, we can't use df.loc[len(df.index)] until we reset the index
     df = df.reset_index(drop=True)
     df.loc[len(df.index)] = ['Pending**', 'Pending cash', 1.0, pending, pending]
