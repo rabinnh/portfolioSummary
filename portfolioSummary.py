@@ -30,7 +30,7 @@ def percOfTotal(value, total):
 
 
 # My apply lamda
-def currencyToFloat(currency, default=None):
+def currencyToFloat(row, currency, default=None):
     if default is not None and type(currency) is str and len(currency) == 0:
         if type(default) is str:
             return float(default.replace('$', '').replace(',', ''))
@@ -40,9 +40,9 @@ def currencyToFloat(currency, default=None):
         return default
     else:
         if '--' in currency:
-            print('One of your equities has not yet been completely settled and the \n'
+            print(f'{row["Symbol"]} - This equity has not yet been settled and the \n'
                   '"Total Gain/Loss Dollar" and/or "Cost Basis Total" is not yet available.\n'
-                  'When this information becomes available the result will be more accurate.')
+                  'When this information becomes available the result will be more accurate.\n')
             return default
         return float(currency.replace('$', '').replace(',', ''))
 
@@ -91,7 +91,7 @@ def main(fName, oDir):
         i = iRow['Last Price Change']
         amt = 0.0
         if type(i) is str:
-            amt = currencyToFloat(i)
+            amt = currencyToFloat(iRow, i)
         elif type(i) is float:
             amt = i
         if math.isnan(amt):
@@ -99,7 +99,7 @@ def main(fName, oDir):
         amt = float(amt)
         if amt == 0.0:
             if type(iRow['Current Value']) is str:
-                amt = currencyToFloat(iRow['Current Value'])
+                amt = currencyToFloat(iRow, iRow['Current Value'])
             elif type(iRow['Current Value']) is float:
                 amt = iRow['Current Value']
         pending += float(amt)
@@ -125,9 +125,9 @@ def main(fName, oDir):
     df['Cost Basis Total'] = df['Cost Basis Total'].fillna(df['Current Value'])
 
     # Use a lambda to quickly convert string dollar figures to a float
-    df['Current Value'] = df.apply(lambda row: currencyToFloat(row['Current Value']), axis=1)
+    df['Current Value'] = df.apply(lambda row: currencyToFloat(row, row['Current Value']), axis=1)
     # df['Last Price'] = df.apply(lambda row: currencyToFloat(row['Last Price'], 1.0), axis=1)
-    df['Cost Basis Total'] = df.apply(lambda row: currencyToFloat(row['Cost Basis Total'], row['Current Value']), axis=1)
+    df['Cost Basis Total'] = df.apply(lambda row: currencyToFloat(row, row['Cost Basis Total'], row['Current Value']), axis=1)
 
     # Add "pending" cash row back in
     # Because the indexes may not be sequential, we can't use df.loc[len(df.index)] until we reset the index
