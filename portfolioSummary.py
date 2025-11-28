@@ -83,7 +83,7 @@ def main(fName, oDir):
     df = pd.read_csv(fName)
 
     # 'Pending Activity has no current value, only changed.  So let's total them all up and add the sum to "CASH"
-    pDF = df.loc[df['Symbol'] == 'Pending Activity']
+    pDF = df.loc[df['Symbol'] == 'Pending activity']
     pending = 0.0
     pDF.set_index('Symbol', inplace=True)
 
@@ -112,7 +112,7 @@ def main(fName, oDir):
     df = df.filter(['Symbol', 'Description', 'Quantity', 'Current Value', 'Cost Basis Total'])
 
     # Remove the pending activity rows
-    df = df[df['Symbol'] != 'Pending Activity']
+    df = df[df['Symbol'] != 'Pending activity']
 
     # Get rid of any remaining rows that don't have a current value
     df = df[df['Current Value'].notnull()]
