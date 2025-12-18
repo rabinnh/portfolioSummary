@@ -80,7 +80,7 @@ def main(fName, oDir):
     oName += fBaseName
 
     # Read the csv file
-    df = pd.read_csv(fName)
+    df = pd.read_csv(fName, index_col=False)
 
     # 'Pending Activity has no current value, only changed.  So let's total them all up and add the sum to "CASH"
     pDF = df.loc[df['Symbol'] == 'Pending activity']
