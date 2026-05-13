@@ -3,13 +3,13 @@
 """
 Copyright 2024 Mainspring Research
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”),
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"),
 to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute,
 sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
 The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 IN THE SOFTWARE.
@@ -22,14 +22,14 @@ import numpy
 import pandas as pd
 from matplotlib import pyplot as plt
 from dateutil.parser import parse
+from openpyxl import Workbook
+from openpyxl.styles import Font
 
 
-# My apply lamda
 def percOfTotal(value, total):
     return value / total
 
 
-# My apply lamda
 def currencyToFloat(row, currency, default=None):
     if default is not None and type(currency) is str and len(currency) == 0:
         if type(default) is str:
@@ -47,7 +47,6 @@ def currencyToFloat(row, currency, default=None):
         return float(currency.replace('$', '').replace(',', ''))
 
 
-# See if the string contains a date
 def checkForDate(desc):
     dList = desc.split(' ')
     hasDate = False
@@ -58,13 +57,11 @@ def checkForDate(desc):
             break
         except ValueError:
             pass
-
     return hasDate
 
 
 # Main
 def main(fName, oDir):
-    # Extract base file name
     if fName[-4:] != '.csv':
         print('Input file must have a csv extension')
         exit(-1)
@@ -73,16 +70,14 @@ def main(fName, oDir):
     if i != -1:
         fBaseName = fBaseName[i + 1:]
 
-    # Create full path for output
     oName = oDir
     if oName[len(oName) - 1] != '/':
         oName += '/'
     oName += fBaseName
 
-    # Read the csv file
     df = pd.read_csv(fName, index_col=False)
 
-    # 'Pending Activity has no current value, only changed.  So let's total them all up and add the sum to "CASH"
+    # Sum pending activity
     pDF = df.loc[df['Symbol'] == 'Pending activity']
     pending = 0.0
     pDF.set_index('Symbol', inplace=True)
@@ -104,43 +99,25 @@ def main(fName, oDir):
                 amt = iRow['Current Value']
         pending += float(amt)
 
-    # BROKERAGELINK account has the total, and then still lists the individual investments, so remove it.
     df = df[df['Description'] != 'BROKERAGELINK']
-
-    # We only need symbol and current value
-    # df = df.filter(['Symbol', 'Description', 'Quantity', 'Current Value', 'Cost Basis Total'])
     df = df.filter(['Symbol', 'Description', 'Quantity', 'Current Value', 'Cost Basis Total'])
-
-    # Remove the pending activity rows
     df = df[df['Symbol'] != 'Pending activity']
-
-    # Get rid of any remaining rows that don't have a current value
     df = df[df['Current Value'].notnull()]
-
-    # If any symbols are blank (like RHRP) then change it to *CASH**
     df['Symbol'] = df['Symbol'].fillna('*CASH**')
-
-    # Get rid of nans
     df['Quantity'] = df['Quantity'].fillna(1.0)
     df['Cost Basis Total'] = df['Cost Basis Total'].fillna(df['Current Value'])
 
-    # Use a lambda to quickly convert string dollar figures to a float
-    df['Current Value'] = df.apply(lambda row: currencyToFloat(row, row['Current Value']), axis=1)
-    # df['Last Price'] = df.apply(lambda row: currencyToFloat(row['Last Price'], 1.0), axis=1)
-    df['Cost Basis Total'] = df.apply(lambda row: currencyToFloat(row, row['Cost Basis Total'], row['Current Value']), axis=1)
+    df['Current Value'] = df.apply(lambda rw: currencyToFloat(rw, rw['Current Value']), axis=1)
+    df['Cost Basis Total'] = df.apply(lambda rw: currencyToFloat(rw, rw['Cost Basis Total'], rw['Current Value']), axis=1)
 
-    # Add "pending" cash row back in
-    # Because the indexes may not be sequential, we can't use df.loc[len(df.index)] until we reset the index
     df = df.reset_index(drop=True)
     df.loc[len(df.index)] = ['Pending**', 'Pending cash', 1.0, pending, pending]
 
-    # Change all cash rows to "CASH"
     for index in df.index:
         if '**' in df.loc[index]['Symbol']:
             df.at[index, 'Symbol'] = '*CASH*'
             df.at[index, 'Description'] = 'Fixed Income'
 
-    # Change all bond and CD rows to Fixed Income. They always have a '%' sign in them and a date.
     for index in df.index:
         if '%' in df.loc[index]['Description'] and checkForDate(df.loc[index]['Description']):
             if ' CD ' in df.loc[index]['Description']:
@@ -149,39 +126,26 @@ def main(fName, oDir):
                 df.at[index, 'Symbol'] = '*Bonds'
             df.at[index, 'Description'] = 'Fixed Income'
 
-    # Now sum all common symbols - "reset_index" ensures that we retain all our index columns
     df = df.groupby(['Symbol', 'Description']).sum().reset_index()
 
-    # Get the portfolio total
     total = float(df.sum().loc['Current Value'])
 
-    # *CASH*, CDs, and Fixed Income are special cases
     df.loc[df['Description'] == 'Fixed Income', 'Quantity'] = 1.0
-    # df.loc[df['Description'] == 'Fixed Income', 'Last Price'] = df['Current Value']
 
+    # Compute values in Python for pie chart, JSON, and sorting
     df.insert(3, 'Last Price', df['Current Value'] / df['Quantity'])
-
-    # Figure out average cost bases
     df.insert(5, 'Average Cost Basis', df['Cost Basis Total'] / df['Quantity'])
-
-    # Figure out Gain-Loss
     df['Gain-Loss'] = df['Current Value'] - df['Cost Basis Total']
-
-    # Figure out Gain-Loss %
     df['Gain-Loss %'] = df['Gain-Loss'] / df['Cost Basis Total']
+    df['Perc of total'] = df.apply(lambda rw: percOfTotal(rw['Current Value'], total), axis=1)
 
-    # Now get the percent of the total
-    df['Perc of total'] = df.apply(lambda row: percOfTotal(row['Current Value'], total), axis=1)
-
-    # We could format it here, or just do it when we use the JSON file
-    # df['Perc of total'] = df['Perc of total'].map('{:.2f}'.format)
     df = df.round(4)
     df = df.sort_values(by='Perc of total', ascending=False)
     dfFixed = df.query('Symbol.str.contains("*", regex=False)')
     dfNotFixed = df.query('not Symbol.str.contains("*", regex=False)')
     df = pd.concat([dfFixed, dfNotFixed], ignore_index=True)
 
-    # Create a dictionary for the pie chart
+    # --- Pie chart (unchanged) ---
     pieDict = df.to_dict(orient='index')
     labels = []
     perc = []
@@ -189,56 +153,148 @@ def main(fName, oDir):
         labels.append(pieDict[i]['Symbol'])
         perc.append(pieDict[i]['Perc of total'])
 
-    # Create pie chart
-    # Creating plot
-    # fig = plt.figure(figsize=(12, 10), tight_layout=True)
     plt.figure(figsize=(15, 15))
     plt.rcParams.update({'font.size': 18})
     plt.pie(perc, labels=labels, autopct='{:.2f}%'.format)
-    # plt.show()
     plt.savefig('{}.{}'.format(oName, 'png'), dpi='figure')
 
-    # Convert to a JSON buffer
+    # --- JSON (unchanged) ---
     jsonBuff = df.to_json(orient='records', indent=4)
-
-    # And write it
     f = open('{}.json'.format(oName), 'w')
     f.write(jsonBuff)
     f.close()
 
-    stock_current = df.loc[(df['Description'] != 'Fixed Income'), 'Current Value'].sum()
-    stock_cost_basis = df.loc[(df['Description'] != 'Fixed Income'), 'Cost Basis Total'].sum()
-    stock_gain_loss = stock_current - stock_cost_basis
-    stock_gl_perc = stock_gain_loss / stock_cost_basis if stock_cost_basis > 0.0 else 0.0
+    # --- Excel output with formulas ---
+    # Column layout (1-indexed):
+    #   A=1: Symbol
+    #   B=2: Description
+    #   C=3: Quantity
+    #   D=4: Last Price           = E / C
+    #   E=5: Current Value
+    #   F=6: Average Cost Basis   = G / C
+    #   G=7: Cost Basis Total
+    #   H=8: Gain-Loss            = E - G
+    #   I=9: Gain-Loss %          = H / G
+    #   J=10: Perc of total       = E / total_cell
 
-    df.loc[len(df.index)] = ['', 'Total (not incl interest and dividends)', '', '', df['Current Value'].sum(), '',
-                             df['Cost Basis Total'].sum(), df['Gain-Loss'].sum(), '', '']
+    headers = ['Symbol', 'Description', 'Quantity', 'Last Price', 'Current Value',
+               'Average Cost Basis', 'Cost Basis Total', 'Gain-Loss', 'Gain-Loss %', 'Perc of total']
 
-    df['Gain-Loss %'] = df['Gain-Loss'] / df['Cost Basis Total']
+    num_data_rows = len(df)
+    # Summary rows start after data
+    total_row = num_data_rows + 2       # Excel row (1-indexed, +1 for header)
+    stock_row = total_row + 1
+    fixed_row = stock_row + 1
 
-    # Stock percentage of total
-    stockPercOfTtotal = stock_current / total
-    df.loc[len(df.index)] = ['', 'Total stocks', '', '', stock_current, '',
-                             stock_cost_basis, stock_gain_loss, stock_gl_perc, stockPercOfTtotal]
+    # Determine which data rows are stocks vs fixed income for summary formulas
+    stock_rows = []
+    fixed_rows = []
+    for idx, df_row in df.iterrows():
+        excel_row = idx + 2  # +1 for header, +1 for 1-indexing
+        if df_row['Description'] == 'Fixed Income':
+            fixed_rows.append(excel_row)
+        else:
+            stock_rows.append(excel_row)
 
-    # Fixed income totals
-    fixed_cost_basis = df.loc[(df['Description'] == 'Fixed Income'), 'Cost Basis Total'].sum()
-    fixed_current = df.loc[(df['Description'] == 'Fixed Income'), 'Current Value'].sum()
-    fixed_gain_loss = fixed_current - fixed_cost_basis
-    fixed_gl_perc = fixed_gain_loss / fixed_cost_basis if fixed_cost_basis > 0.0 else 0.0
-    df.loc[len(df.index)] = ['', 'Total fixed income (not incl int. and div.)', '', '', total - stock_current, '',
-                             fixed_cost_basis, fixed_gain_loss, fixed_gl_perc, 1.0 - stockPercOfTtotal]
+    def sum_formula(col_ref, target_rows):
+        """Build a SUM of specific rows like =SUM(E2,E5,E8)"""
+        if not target_rows:
+            return 0
+        return '=' + '+'.join(f'{col_ref}{rw}' for rw in target_rows)
 
-    # Write as an Excel file
-    with pd.ExcelWriter('{}.xlsx'.format(oName), engine="xlsxwriter") as writer:
-        df.to_excel(writer, sheet_name="Investment Summary", index=False)
-        workbook = writer.book
-        worksheet = writer.sheets['Investment Summary']
-        format1 = workbook.add_format({"num_format": "$#,##0.00"})
-        format2 = workbook.add_format({"num_format": "0.00%"})
-        worksheet.set_column(1, 1, 34, format1)
-        worksheet.set_column(3, 7, 18, format1)
-        worksheet.set_column(8, 9, 14, format2)
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Investment Summary"
+
+    # Write headers
+    for col_idx, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_idx, value=header)
+        cell.font = Font(bold=True)
+
+    # Write data rows with formulas for calculated columns
+    for df_idx, df_row in df.iterrows():
+        xr = df_idx + 2  # Excel row
+
+        ws.cell(row=xr, column=1, value=df_row['Symbol'])
+        ws.cell(row=xr, column=2, value=df_row['Description'])
+        ws.cell(row=xr, column=3, value=df_row['Quantity'])
+        # D: Last Price = Current Value / Quantity
+        ws.cell(row=xr, column=4).value = f'=IF(C{xr}=0,"",E{xr}/C{xr})'
+        ws.cell(row=xr, column=5, value=df_row['Current Value'])
+        # F: Average Cost Basis = Cost Basis Total / Quantity
+        ws.cell(row=xr, column=6).value = f'=IF(C{xr}=0,"",G{xr}/C{xr})'
+        ws.cell(row=xr, column=7, value=df_row['Cost Basis Total'])
+        # H: Gain-Loss = Current Value - Cost Basis Total
+        ws.cell(row=xr, column=8).value = f'=E{xr}-G{xr}'
+        # I: Gain-Loss % = Gain-Loss / Cost Basis Total
+        ws.cell(row=xr, column=9).value = f'=IF(G{xr}=0,"",H{xr}/G{xr})'
+        # J: Perc of total = Current Value / grand total of Current Value
+        # Reference the total row's Current Value cell
+        ws.cell(row=xr, column=10).value = f'=IF(E{total_row}=0,"",E{xr}/E{total_row})'
+
+    # --- Summary row: Total (not incl interest and dividends) ---
+    last_data_row = num_data_rows + 1  # last Excel data row
+    ws.cell(row=total_row, column=1, value='')
+    ws.cell(row=total_row, column=2, value='Total (not incl interest and dividends)')
+    ws.cell(row=total_row, column=3, value='')
+    ws.cell(row=total_row, column=4, value='')
+    ws.cell(row=total_row, column=5).value = f'=SUM(E2:E{last_data_row})'
+    ws.cell(row=total_row, column=6, value='')
+    ws.cell(row=total_row, column=7).value = f'=SUM(G2:G{last_data_row})'
+    ws.cell(row=total_row, column=8).value = f'=E{total_row}-G{total_row}'
+    ws.cell(row=total_row, column=9).value = f'=IF(G{total_row}=0,"",H{total_row}/G{total_row})'
+    ws.cell(row=total_row, column=10, value='')
+
+    # --- Summary row: Total stocks ---
+    ws.cell(row=stock_row, column=1, value='')
+    ws.cell(row=stock_row, column=2, value='Total stocks')
+    ws.cell(row=stock_row, column=3, value='')
+    ws.cell(row=stock_row, column=4, value='')
+    ws.cell(row=stock_row, column=5).value = sum_formula('E', stock_rows)
+    ws.cell(row=stock_row, column=6, value='')
+    ws.cell(row=stock_row, column=7).value = sum_formula('G', stock_rows)
+    ws.cell(row=stock_row, column=8).value = f'=E{stock_row}-G{stock_row}'
+    ws.cell(row=stock_row, column=9).value = f'=IF(G{stock_row}=0,"",H{stock_row}/G{stock_row})'
+    ws.cell(row=stock_row, column=10).value = f'=IF(E{total_row}=0,"",E{stock_row}/E{total_row})'
+
+    # --- Summary row: Total fixed income ---
+    ws.cell(row=fixed_row, column=1, value='')
+    ws.cell(row=fixed_row, column=2, value='Total fixed income (not incl int. and div.)')
+    ws.cell(row=fixed_row, column=3, value='')
+    ws.cell(row=fixed_row, column=4, value='')
+    ws.cell(row=fixed_row, column=5).value = f'=E{total_row}-E{stock_row}'
+    ws.cell(row=fixed_row, column=6, value='')
+    ws.cell(row=fixed_row, column=7).value = sum_formula('G', fixed_rows)
+    ws.cell(row=fixed_row, column=8).value = f'=E{fixed_row}-G{fixed_row}'
+    ws.cell(row=fixed_row, column=9).value = f'=IF(G{fixed_row}=0,"",H{fixed_row}/G{fixed_row})'
+    ws.cell(row=fixed_row, column=10).value = f'=IF(E{total_row}=0,"",1-J{stock_row})'
+
+    # --- Formatting ---
+    currency_fmt = '$#,##0.00'
+    pct_fmt = '0.00%'
+
+    for fmt_row in range(2, fixed_row + 1):
+        for col in [4, 5, 6, 7, 8]:  # D, E, F, G, H
+            ws.cell(row=fmt_row, column=col).number_format = currency_fmt
+        for col in [9, 10]:  # I, J
+            ws.cell(row=fmt_row, column=col).number_format = pct_fmt
+
+    # Column widths
+    ws.column_dimensions['A'].width = 12
+    ws.column_dimensions['B'].width = 44
+    ws.column_dimensions['C'].width = 12
+    for cl in ['D', 'E', 'F', 'G', 'H']:
+        ws.column_dimensions[cl].width = 18
+    for cl in ['I', 'J']:
+        ws.column_dimensions[cl].width = 14
+
+    # Bold summary rows
+    for sr in [total_row, stock_row, fixed_row]:
+        for c in range(1, 11):
+            cell = ws.cell(row=sr, column=c)
+            cell.font = Font(bold=True)
+
+    wb.save('{}.xlsx'.format(oName))
 
 
 if __name__ == '__main__':
