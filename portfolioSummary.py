@@ -144,9 +144,9 @@ def main(fName, oDir):
     for index in df.index:
         if '%' in df.loc[index]['Description'] and checkForDate(df.loc[index]['Description']):
             if ' CD ' in df.loc[index]['Description']:
-                df.at[index, 'Symbol'] = 'CDs'
+                df.at[index, 'Symbol'] = '*CDs'
             else:
-                df.at[index, 'Symbol'] = 'Bonds'
+                df.at[index, 'Symbol'] = '*Bonds'
             df.at[index, 'Description'] = 'Fixed Income'
 
     # Now sum all common symbols - "reset_index" ensures that we retain all our index columns
@@ -177,6 +177,9 @@ def main(fName, oDir):
     # df['Perc of total'] = df['Perc of total'].map('{:.2f}'.format)
     df = df.round(4)
     df = df.sort_values(by='Perc of total', ascending=False)
+    dfFixed = df.query('Symbol.str.contains("*", regex=False)')
+    dfNotFixed = df.query('not Symbol.str.contains("*", regex=False)')
+    df = pd.concat([dfFixed, dfNotFixed], ignore_index=True)
 
     # Create a dictionary for the pie chart
     pieDict = df.to_dict(orient='index')
