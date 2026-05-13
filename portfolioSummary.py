@@ -23,7 +23,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from dateutil.parser import parse
 from openpyxl import Workbook
-from openpyxl.styles import Font
+from openpyxl.styles import Font, NamedStyle
 
 
 def percOfTotal(value, total):
@@ -186,21 +186,7 @@ def main(fName, oDir):
     stock_row = total_row + 1
     fixed_row = stock_row + 1
 
-    # Determine which data rows are stocks vs fixed income for summary formulas
-    stock_rows = []
-    fixed_rows = []
-    for idx, df_row in df.iterrows():
-        excel_row = idx + 2  # +1 for header, +1 for 1-indexing
-        if df_row['Description'] == 'Fixed Income':
-            fixed_rows.append(excel_row)
-        else:
-            stock_rows.append(excel_row)
-
-    def sum_formula(col_ref, target_rows):
-        """Build a SUM of specific rows like =SUM(E2,E5,E8)"""
-        if not target_rows:
-            return 0
-        return '=' + '+'.join(f'{col_ref}{rw}' for rw in target_rows)
+    last_data_row = num_data_rows + 1
 
     wb = Workbook()
     ws = wb.active
@@ -235,38 +221,38 @@ def main(fName, oDir):
         ws.cell(row=xr, column=10).value = f'=IF(E{total_row}=0,"",E{xr}/E{total_row})'
 
     # --- Summary row: Total (not incl interest and dividends) ---
-    last_data_row = num_data_rows + 1  # last Excel data row
+    lr = last_data_row
     ws.cell(row=total_row, column=1, value='')
     ws.cell(row=total_row, column=2, value='Total (not incl interest and dividends)')
     ws.cell(row=total_row, column=3, value='')
     ws.cell(row=total_row, column=4, value='')
-    ws.cell(row=total_row, column=5).value = f'=SUM(E2:E{last_data_row})'
+    ws.cell(row=total_row, column=5).value = f'=SUM(E2:E{lr})'
     ws.cell(row=total_row, column=6, value='')
-    ws.cell(row=total_row, column=7).value = f'=SUM(G2:G{last_data_row})'
+    ws.cell(row=total_row, column=7).value = f'=SUM(G2:G{lr})'
     ws.cell(row=total_row, column=8).value = f'=E{total_row}-G{total_row}'
     ws.cell(row=total_row, column=9).value = f'=IF(G{total_row}=0,"",H{total_row}/G{total_row})'
     ws.cell(row=total_row, column=10, value='')
 
-    # --- Summary row: Total stocks ---
+    # --- Summary row: Total stocks (symbols NOT starting with *) ---
     ws.cell(row=stock_row, column=1, value='')
     ws.cell(row=stock_row, column=2, value='Total stocks')
     ws.cell(row=stock_row, column=3, value='')
     ws.cell(row=stock_row, column=4, value='')
-    ws.cell(row=stock_row, column=5).value = sum_formula('E', stock_rows)
+    ws.cell(row=stock_row, column=5).value = f'=E{total_row}-E{fixed_row}'
     ws.cell(row=stock_row, column=6, value='')
-    ws.cell(row=stock_row, column=7).value = sum_formula('G', stock_rows)
+    ws.cell(row=stock_row, column=7).value = f'=G{total_row}-G{fixed_row}'
     ws.cell(row=stock_row, column=8).value = f'=E{stock_row}-G{stock_row}'
     ws.cell(row=stock_row, column=9).value = f'=IF(G{stock_row}=0,"",H{stock_row}/G{stock_row})'
     ws.cell(row=stock_row, column=10).value = f'=IF(E{total_row}=0,"",E{stock_row}/E{total_row})'
 
-    # --- Summary row: Total fixed income ---
+    # --- Summary row: Total fixed income (symbols starting with *) ---
     ws.cell(row=fixed_row, column=1, value='')
     ws.cell(row=fixed_row, column=2, value='Total fixed income (not incl int. and div.)')
     ws.cell(row=fixed_row, column=3, value='')
     ws.cell(row=fixed_row, column=4, value='')
-    ws.cell(row=fixed_row, column=5).value = f'=E{total_row}-E{stock_row}'
+    ws.cell(row=fixed_row, column=5).value = f'=SUMIF($A$2:$A${lr},"~**",E2:E{lr})'
     ws.cell(row=fixed_row, column=6, value='')
-    ws.cell(row=fixed_row, column=7).value = sum_formula('G', fixed_rows)
+    ws.cell(row=fixed_row, column=7).value = f'=SUMIF($A$2:$A${lr},"~**",G2:G{lr})'
     ws.cell(row=fixed_row, column=8).value = f'=E{fixed_row}-G{fixed_row}'
     ws.cell(row=fixed_row, column=9).value = f'=IF(G{fixed_row}=0,"",H{fixed_row}/G{fixed_row})'
     ws.cell(row=fixed_row, column=10).value = f'=IF(E{total_row}=0,"",1-J{stock_row})'
