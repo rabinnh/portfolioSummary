@@ -218,12 +218,14 @@ def main(fName, oDir):
         ws.cell(row=xr, column=1, value=df_row['Symbol'])
         ws.cell(row=xr, column=2, value=df_row['Description'])
         ws.cell(row=xr, column=3, value=df_row['Quantity'])
-        # D: Last Price = Current Value / Quantity
-        ws.cell(row=xr, column=4).value = f'=IF(C{xr}=0,"",E{xr}/C{xr})'
-        ws.cell(row=xr, column=5, value=df_row['Current Value'])
-        # F: Average Cost Basis = Cost Basis Total / Quantity
-        ws.cell(row=xr, column=6).value = f'=IF(C{xr}=0,"",G{xr}/C{xr})'
-        ws.cell(row=xr, column=7, value=df_row['Cost Basis Total'])
+        # D: Last Price (input)
+        ws.cell(row=xr, column=4, value=df_row['Last Price'])
+        # E: Current Value = Last Price * Quantity
+        ws.cell(row=xr, column=5).value = f'=D{xr}*C{xr}'
+        # F: Average Cost Basis (input)
+        ws.cell(row=xr, column=6, value=df_row['Average Cost Basis'])
+        # G: Cost Basis Total = Average Cost Basis * Quantity
+        ws.cell(row=xr, column=7).value = f'=F{xr}*C{xr}'
         # H: Gain-Loss = Current Value - Cost Basis Total
         ws.cell(row=xr, column=8).value = f'=E{xr}-G{xr}'
         # I: Gain-Loss % = Gain-Loss / Cost Basis Total
